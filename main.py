@@ -12,6 +12,7 @@ from .core.client import GSVApiClient, GSVRequestResult
 from .core.config import PluginConfig
 from .core.emotion import EmotionJudger
 from .core.entry import EntryManager
+from .core.language import LanguageJudger
 from .core.local_data import LocalDataManager
 from .core.service import GPTSoVITSService
 
@@ -24,6 +25,7 @@ class GPTSoVITSPlugin(Star):
         self.entry_mgr = EntryManager(self.cfg)
         self.client = GSVApiClient(self.cfg)
         self.judger = EmotionJudger(self.cfg)
+        self.lang_judger = LanguageJudger(self.cfg)
         self.service = GPTSoVITSService(self.cfg, self.client, self.local_data)
 
     async def initialize(self):
@@ -65,6 +67,27 @@ class GPTSoVITSPlugin(Star):
 
         return entry.to_params() if entry else None
 
+    async def _get_request_params(
+        self,
+        event: AstrMessageEvent,
+        text: str,
+        *,
+        use_emotion: bool = True,
+    ) -> dict | None:
+        params = {}
+
+        if use_emotion:
+            emotion_params = await self._get_emotion_params(event, text)
+            if emotion_params:
+                params.update(emotion_params)
+
+        if self.cfg.judge.auto_detect_lang:
+            lang = await self.lang_judger.judge_language(event, text=text)
+            if lang:
+                params["text_lang"] = lang
+
+        return params or None
+
     @filter.on_decorating_result(priority=14)
     async def on_decorating_result(self, event: AstrMessageEvent):
         """消息入口"""
@@ -100,7 +123,7 @@ class GPTSoVITSPlugin(Star):
         if len(combined_text) > cfg.max_msg_len:
             return
 
-        params = await self._get_emotion_params(event, combined_text)
+        params = await self._get_request_params(event, combined_text)
         res = await self.service.inference(combined_text, extra_params=params)
         if not bool(res):
             return
@@ -114,7 +137,8 @@ class GPTSoVITSPlugin(Star):
             return
 
         text = event.message_str.partition(" ")[2]
-        res = await self.service.inference(text)
+        params = await self._get_request_params(event, text, use_emotion=False)
+        res = await self.service.inference(text, extra_params=params)
 
         if not bool(res):
             yield event.plain_result(res.error)
@@ -138,7 +162,7 @@ class GPTSoVITSPlugin(Star):
             message(string): 要讲的话
         """
         try:
-            params = await self._get_emotion_params(event, message)
+            params = await self._get_request_params(event, message)
             res = await self.service.inference(message, extra_params=params)
             if not bool(res):
                 return res.error

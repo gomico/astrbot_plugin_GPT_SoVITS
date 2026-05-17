@@ -102,13 +102,15 @@
                     "zh",
                     "en",
                     "ja",
-                    "ko"
+                    "ko",
+                    "auto"
                 ],
                 "labels": [
                     "中文",
                     "英语",
                     "日语",
-                    "韩语"
+                    "韩语",
+                    "多语种混合(自动)"
                 ],
                 "default": "zh"
             },
@@ -298,6 +300,12 @@
                 "description": "使用 LLM 判断情感",
                 "type": "bool",
                 "hint": "开启后，将使用 LLM 模型判断当前文本的情绪，从而改变语音的情绪参数。若关闭， 则使用情绪条目的触发词来匹配情绪",
+                "default": false
+            },
+            "auto_detect_lang": {
+                "description": "自动判断文本语言",
+                "type": "bool",
+                "hint": "开启后，将使用配置的 LLM 提供商为每次 TTS 请求判断文本语言，并用 en、zh、ja、ko 之一覆盖 default_params.text_lang；关闭时保留手动 text_lang 设置，包括 auto。",
                 "default": false
             },
             "provider_id": {

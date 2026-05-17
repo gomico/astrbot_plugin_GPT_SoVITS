@@ -127,6 +127,7 @@ class ModelConfig(ConfigNode):
 
 class JudgeConfig(ConfigNode):
     enabled_llm: bool
+    auto_detect_lang: bool
     provider_id: str
 
 
@@ -151,6 +152,8 @@ class PluginConfig(ConfigNode):
     def __init__(self, cfg: AstrBotConfig, context: Context):
         super().__init__(cfg)
         self.context = context
+        if "auto_detect_lang" not in self.judge.raw_data():
+            self.judge.auto_detect_lang = False
 
         self.data_dir = StarTools.get_data_dir(self._plugin_name)
         self.plugin_dir = Path(get_astrbot_plugin_path()) / self._plugin_name
